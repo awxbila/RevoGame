@@ -1,59 +1,101 @@
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-let player = { x: 180, y: 370, w: 40, h: 20 };
-let objects = [];
-let score = 0;
+let player, objects, score;
+let ctx, canvas;
+let gameRunning = false;
+let playerName = "";
 
-document.addEventListener("keydown", move);
-
-function move(e) {
-  if (e.key === "ArrowLeft" && player.x > 0) player.x -= 20;
-  if (e.key === "ArrowRight" && player.x < canvas.width - player.w)
-    player.x += 20;
-}
-
-function drawPlayer() {
-  ctx.fillStyle = "cyan";
-  ctx.fillRect(player.x, player.y, player.w, player.h);
-}
-
-function drawObjects() {
-  ctx.fillStyle = "red";
-  objects.forEach((o) => ctx.fillRect(o.x, o.y, o.w, o.h));
-}
-
-function updateObjects() {
-  objects.forEach((o) => (o.y += 5));
-  if (Math.random() < 0.05) {
-    objects.push({ x: Math.random() * 360, y: 0, w: 20, h: 20 });
+function startGame() {
+  playerName = document.getElementById("playerNameInput").value.trim();
+  if (!playerName) {
+    alert("Please enter your name first!");
+    return;
   }
-  objects = objects.filter((o) => o.y < 400);
-}
 
-function checkCollision() {
-  for (let o of objects) {
-    if (
-      player.x < o.x + o.w &&
-      player.x + player.w > o.x &&
-      player.y < o.y + o.h &&
-      player.y + player.h > o.y
-    ) {
-      alert("Game Over! Skor: " + score);
-      score = 0;
-      objects = [];
-    }
-  }
-}
+  // Tampilkan area game
+  document.getElementById("playerName").textContent = playerName;
+  document.getElementById("name-section").style.display = "none";
+  document.getElementById("game-section").style.display = "block";
 
-function gameLoop() {
-  ctx.clearRect(0, 0, 400, 400);
-  drawPlayer();
-  drawObjects();
-  updateObjects();
-  checkCollision();
-  score++;
-  document.getElementById("score").textContent = score;
+  // Siapkan canvas & context
+  canvas = document.getElementById("gameCanvas");
+  ctx = canvas.getContext("2d");
+
+  // Inisialisasi state
+  player = { x: 180, y: 460, w: 40, h: 40, speed: 7 };
+  objects = [];
+  score = 0;
+
+  // Pastikan elemen UI tersembunyi di awal
+  document.getElementById("score-wrap").style.display = "none";
+  document.getElementById("gameOver").style.display = "none";
+
+  // Mulai game loop
+  gameRunning = true;
   requestAnimationFrame(gameLoop);
 }
 
-gameLoop();
+function gameLoop() {
+  if (!gameRunning) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Tampilkan skor setelah frame pertama benar-benar berjalan
+  if (document.getElementById("score-wrap").style.display === "none") {
+    document.getElementById("score-wrap").style.display = "block";
+  }
+
+  // Gambar player (kotak biru ukuran 40x40)
+  ctx.fillStyle = "blue";
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+
+  // Secara acak buat objek jatuh (kotak merah 40x40)
+  if (Math.random() < 0.02) {
+    objects.push({
+      x: Math.random() * (canvas.width - 40),
+      y: -40,
+      w: 40,
+      h: 40,
+    });
+  }
+
+  ctx.fillStyle = "red";
+  for (let o of objects) {
+    o.y += 4;
+    ctx.fillRect(o.x, o.y, o.w, o.h);
+
+    // Deteksi tabrakan
+    if (
+      o.x < player.x + player.w &&
+      o.x + o.w > player.x &&
+      o.y < player.y + player.h &&
+      o.y + o.h > player.y
+    ) {
+      endGame();
+      return;
+    }
+  }
+
+  // Hapus objek yang sudah lewat
+  objects = objects.filter((o) => o.y < canvas.height);
+
+  // Update skor
+  score++;
+  document.getElementById("score").textContent = score;
+
+  requestAnimationFrame(gameLoop);
+}
+
+function endGame() {
+  gameRunning = false;
+  document.getElementById(
+    "gameOver"
+  ).textContent = `Game Over, ${playerName}! Final Score: ${score}`;
+  document.getElementById("gameOver").style.display = "block";
+}
+
+// Kontrol pemain (Arrow Left/Right)
+document.addEventListener("keydown", (e) => {
+  if (!gameRunning) return;
+  if (e.key === "ArrowLeft" && player.x > 0) player.x -= player.speed;
+  if (e.key === "ArrowRight" && player.x + player.w < canvas.width)
+    player.x += player.speed;
+});
